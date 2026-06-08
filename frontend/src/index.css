@@ -1,0 +1,190 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: 'Permanent Marker', cursive;
+  --font-pixel: 'Press Start 2P', monospace;
+  --font-body: 'Rubik', 'Inter', sans-serif;
+
+  --color-background: #0d0d0d;
+  --color-foreground: #e8e4dc;
+
+  --color-card: #141414;
+  --color-card-foreground: #e8e4dc;
+
+  --color-popover: #1a1a1a;
+  --color-popover-foreground: #e8e4dc;
+
+  --color-primary: #2d6a2d;
+  --color-primary-foreground: #ffffff;
+
+  --color-secondary: #1a4d1a;
+  --color-secondary-foreground: #e8e4dc;
+
+  --color-muted: #1f1f1f;
+  --color-muted-foreground: #a39e96;
+
+  --color-accent: #c2a060;
+  --color-accent-foreground: #0d0d0d;
+
+  --color-destructive: #8b0000;
+  --color-destructive-foreground: #ffffff;
+
+  --color-border: #2a2a2a;
+  --color-input: #2a2a2a;
+  --color-ring: #2d6a2d;
+
+  --color-warning: #cc7a00;
+  --color-success: #2d6a2d;
+  --color-info: #4a7c9b;
+}
+
+@layer base {
+  body {
+    font-family: var(--font-body);
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  * {
+    border-color: var(--color-border);
+  }
+
+  ::selection {
+    background-color: #2d6a2d;
+    color: #ffffff;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #0d0d0d;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #2a2a2a;
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #3d3d3d;
+  }
+}
+
+@layer components {
+  .font-display {
+    font-family: 'Permanent Marker', cursive;
+  }
+
+  .hazard-stripe {
+    background: repeating-linear-gradient(
+      45deg,
+      #cc7a00,
+      #cc7a00 10px,
+      #0d0d0d 10px,
+      #0d0d0d 20px
+    );
+  }
+
+  .hazard-stripe-thin {
+    background: repeating-linear-gradient(
+      45deg,
+      #cc7a00,
+      #cc7a00 4px,
+      #0d0d0d 4px,
+      #0d0d0d 8px
+    );
+  }
+
+  .glass-panel {
+    background: rgba(20, 20, 20, 0.85);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .text-glow-green {
+    text-shadow: 0 0 20px rgba(45, 106, 45, 0.5), 0 0 40px rgba(45, 106, 45, 0.2);
+  }
+
+  .text-glow-yellow {
+    text-shadow: 0 0 20px rgba(194, 160, 96, 0.4), 0 0 40px rgba(194, 160, 96, 0.15);
+  }
+
+  .chemical-bg {
+    background-image:
+      radial-gradient(circle at 20% 50%, rgba(45, 106, 45, 0.08) 0%, transparent 50%),
+      radial-gradient(circle at 80% 20%, rgba(194, 160, 96, 0.05) 0%, transparent 40%);
+  }
+
+  .graffiti-text {
+    font-family: 'Permanent Marker', cursive;
+    letter-spacing: 0.02em;
+    transform: rotate(-1deg);
+  }
+
+  .font-pixel {
+    font-family: 'Press Start 2P', monospace;
+  }
+
+  .pixel-art {
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+  }
+
+  .pixel-frame {
+    background: #1a1a1a;
+    border: 3px solid #2a2a2a;
+    box-shadow:
+      inset 0 0 0 1px rgba(45, 106, 45, 0.3),
+      0 4px 0 #0a0a0a;
+  }
+
+  .pixel-bg {
+    background-image: url('/assets/pixel/decor/tilemap.png');
+    background-size: 192px 192px;
+    image-rendering: pixelated;
+    opacity: 0.08;
+  }
+
+  .scanlines::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 0, 0, 0.12) 2px,
+      rgba(0, 0, 0, 0.12) 4px
+    );
+  }
+}
+
+@layer utilities {
+  .animate-fade-in {
+    animation: fadeIn 0.4s ease-out forwards;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.4s ease-out forwards;
+  }
+
+  .animate-pulse-slow {
+    animation: pulse 3s ease-in-out infinite;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
