@@ -1,0 +1,13 @@
+{
+  "style": "default",
+  "rsi": false,
+  "tsConfig": "tsconfig.json",
+  "tailwind": {
+    "css": ["src/index.css"],
+    "config": "tailwind.config.js"
+  },
+  "lib": ["src/lib"],
+  "alias": {
+    "@": ["src/"]
+  }
+}

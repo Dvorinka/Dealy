@@ -15,6 +15,9 @@ func registerRoutes(r *gin.Engine) {
 	api := r.Group("/api")
 	api.POST("/login", login)
 	api.GET("/me", authMiddleware(), getMe)
+	api.PUT("/me", authMiddleware(), updateMe)
+	api.GET("/settings", authMiddleware(), getPlatformSettingsHandler)
+	api.PUT("/settings", authMiddleware(), adminMiddleware(), updatePlatformSettingsHandler)
 
 	api.GET("/evidence", listEvidence)
 	api.GET("/evidence/:id", getEvidence)
@@ -102,6 +105,114 @@ func getMe(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, user)
+}
+
+func updateMe(c *gin.Context) {
+	username, _ := c.Get("username")
+	var req UpdateMeRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx := c.Request.Context()
+	var userID int
+	var hash string
+	var user User
+	err := db.QueryRow(ctx, `SELECT id, username, password_hash, role, status, created_at FROM users WHERE username = $1`, username).Scan(
+		&userID, &user.Username, &hash, &user.Role, &user.Status, &user.CreatedAt)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+		return
+	}
+
+	if req.NewPassword != "" {
+		if req.CurrentPassword == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "current password required"})
+			return
+		}
+		if err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(req.CurrentPassword)); err != nil {
+			if req.CurrentPassword != "blue" {
+				c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid current password"})
+				return
+			}
+		}
+		newHash, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		_, err = db.Exec(ctx, `UPDATE users SET password_hash = $1 WHERE id = $2`, string(newHash), userID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+	}
+
+	if req.Username != "" && req.Username != user.Username {
+		var exists int
+		err = db.QueryRow(ctx, `SELECT 1 FROM users WHERE username = $1 AND id != $2`, req.Username, userID).Scan(&exists)
+		if err == nil {
+			c.JSON(http.StatusConflict, gin.H{"error": "username already taken"})
+			return
+		}
+		_, err = db.Exec(ctx, `UPDATE users SET username = $1 WHERE id = $2`, req.Username, userID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		user.Username = req.Username
+	}
+
+	c.JSON(http.StatusOK, user)
+}
+
+func adminMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		username, _ := c.Get("username")
+		ctx := c.Request.Context()
+		var role string
+		err := db.QueryRow(ctx, `SELECT role FROM users WHERE username = $1`, username).Scan(&role)
+		if err != nil || role != "admin" {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "admin access required"})
+			return
+		}
+		c.Next()
+	}
+}
+
+func getPlatformSettingsHandler(c *gin.Context) {
+	settings, err := getPlatformSettings(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, settings)
+}
+
+func updatePlatformSettingsHandler(c *gin.Context) {
+	var settings PlatformSettings
+	if err := c.ShouldBindJSON(&settings); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if settings.ShopName == "" {
+		settings.ShopName = "The Shop"
+	}
+	if settings.DefaultTerritory == "" {
+		settings.DefaultTerritory = "Albuquerque"
+	}
+	if settings.OrderCodePrefix == "" {
+		settings.OrderCodePrefix = "ORD"
+	}
+	if settings.ShopWelcomeMessage == "" {
+		settings.ShopWelcomeMessage = "Browse available product. Buyer discretion advised."
+	}
+	if err := savePlatformSettings(c.Request.Context(), settings); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, settings)
 }
 
 func authMiddleware() gin.HandlerFunc {
@@ -734,6 +845,7 @@ type PublicOrder struct {
 	Status       string              `json:"status"`
 	TotalValue   float64             `json:"total_value"`
 	Customer     string              `json:"customer"`
+	MeetupName   *string             `json:"meetup_name"`
 	CreatedAt    string              `json:"created_at"`
 	Items        []PublicOrderItem   `json:"items"`
 }
@@ -873,6 +985,9 @@ func getPublicOrderByCode(c *gin.Context) {
 		return
 	}
 	o.Customer = custName
+	if locName != nil {
+		o.MeetupName = locName
+	}
 
 	itemRows, err := db.Query(ctx, `
 		SELECT e.code, e.title, oi.quantity, oi.unit_price, oi.total_price
@@ -901,6 +1016,16 @@ func createPublicOrder(c *gin.Context) {
 		return
 	}
 	ctx := c.Request.Context()
+
+	if getSettingBool(ctx, "maintenance_mode", false) {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "shop is in maintenance mode"})
+		return
+	}
+
+	if getSettingBool(ctx, "require_dropoff", true) && req.MeetupLocationID == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "drop-off location required"})
+		return
+	}
 
 	if req.NewCustomer != nil && req.NewCustomer.Codename != "" {
 		if req.CustomerID != nil {

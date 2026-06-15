@@ -1,9 +1,11 @@
-import { Link, useLocation } from 'react-router-dom'
-import { FlaskConical, Package, Users, MapPin, LayoutDashboard, LogOut, Menu, X, ShoppingBag } from 'lucide-react'
+import { Link, useLocation, Outlet } from 'react-router-dom'
+import { FlaskConical, Package, Users, MapPin, LayoutDashboard, LogOut, Menu, X, ShoppingBag, UserCog, Settings } from 'lucide-react'
 import { useState } from 'react'
 import type { User } from '../types'
 import PixelSprite from './PixelSprite'
 import { roleSprites } from '../lib/pixelAssets'
+import { cn } from '../lib/utils'
+import { Button } from './ui/button'
 
 const navItems = [
   { path: '/admin', label: 'Dashboard', icon: LayoutDashboard },
@@ -11,6 +13,8 @@ const navItems = [
   { path: '/admin/orders', label: 'Orders', icon: Package },
   { path: '/admin/customers', label: 'Customers', icon: Users },
   { path: '/admin/map', label: 'Meetups', icon: MapPin },
+  { path: '/admin/settings/account', label: 'Account', icon: UserCog },
+  { path: '/admin/settings/platform', label: 'Platform', icon: Settings },
   { path: '/', label: 'Shop', icon: ShoppingBag },
 ]
 
@@ -24,9 +28,14 @@ function getRoleBadge(role: string) {
   return colors[role] || 'bg-muted text-muted-foreground'
 }
 
-export default function Layout({ children, user, onLogout }: { children: React.ReactNode; user: User; onLogout: () => void }) {
+export default function Layout({ user, onLogout }: { user: User; onLogout: () => void }) {
   const location = useLocation()
   const [mobileOpen, setMobileOpen] = useState(false)
+
+  const isActive = (path: string) => {
+    if (path === '/admin') return location.pathname === '/admin'
+    return location.pathname === path || location.pathname.startsWith(path + '/')
+  }
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -43,17 +52,18 @@ export default function Layout({ children, user, onLogout }: { children: React.R
 
         <nav className="flex-1 p-4 space-y-1">
           {navItems.map(item => {
-            const active = location.pathname === item.path
+            const active = isActive(item.path)
             const Icon = item.icon
             return (
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+                className={cn(
+                  'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200',
                   active
                     ? 'bg-primary/15 text-primary border-l-2 border-primary'
                     : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                }`}
+                )}
               >
                 <Icon size={18} />
                 {item.label}
@@ -102,9 +112,10 @@ export default function Layout({ children, user, onLogout }: { children: React.R
                   key={item.path}
                   to={item.path}
                   onClick={() => setMobileOpen(false)}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium ${
+                  className={cn(
+                    'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium',
                     active ? 'bg-primary/15 text-primary' : 'text-muted-foreground'
-                  }`}
+                  )}
                 >
                   <Icon size={18} />
                   {item.label}
@@ -125,7 +136,7 @@ export default function Layout({ children, user, onLogout }: { children: React.R
       {/* Main Content */}
       <main className="flex-1 min-w-0">
         <div className="lg:p-8 p-4 pt-20 lg:pt-8 min-h-screen chemical-bg">
-          <div className="animate-fade-in">{children}</div>
+          <div className="animate-fade-in"><Outlet /></div>
         </div>
       </main>
     </div>

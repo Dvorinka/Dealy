@@ -10,11 +10,18 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:8080',
         changeOrigin: true,
-      }
+      },
+      '/shop': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
     }
   },
   build: {
     outDir: 'dist',
     emptyOutDir: true,
+    rollupOptions: {
+      external: ['mapbox-gl', 'mapbox-gl/dist/mapbox-gl.css'],
+    },
   }
 })

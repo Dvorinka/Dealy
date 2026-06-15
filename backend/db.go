@@ -138,6 +138,12 @@ CREATE TABLE IF NOT EXISTS payments (
     transaction_ref VARCHAR(255),
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS platform_settings (
+    key VARCHAR(100) PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
 `
 	_, err := db.Exec(ctx, schema)
 	if err != nil {
@@ -375,6 +381,21 @@ func seedData(db *pgxpool.Pool) {
 				SELECT 1 FROM order_items WHERE order_id = $1 AND evidence_id = $2
 			)`,
 			orderID, evidenceID, oi.qty, oi.unitPrice, total)
+	}
+
+	defaultSettings := map[string]string{
+		"shop_name":             "The Shop",
+		"default_territory":     "Albuquerque",
+		"order_code_prefix":     "ORD",
+		"require_dropoff":       "true",
+		"maintenance_mode":      "false",
+		"shop_welcome_message":  "Browse available product. Buyer discretion advised.",
+	}
+	for key, value := range defaultSettings {
+		db.Exec(ctx, `
+			INSERT INTO platform_settings (key, value)
+			VALUES ($1, $2)
+			ON CONFLICT (key) DO NOTHING`, key, value)
 	}
 
 	fmt.Println("Database seeded")

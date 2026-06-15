@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { MapPin, Navigation, AlertTriangle, X, FlaskConical, Home, Package, Eye, Crosshair } from 'lucide-react'
 import { api } from '../api'
 import type { Location } from '../types'
+import { ModernMap } from './MapView'
 
 const typeIcons: Record<string, any> = {
   lab: FlaskConical,
@@ -55,11 +56,6 @@ export default function MapPage() {
   })
 
   const activeLocations = filtered.filter(l => l.lat && l.lng)
-
-  // Build map URL - centered on Albuquerque with all markers
-  const mapUrl = activeLocations.length > 0
-    ? `https://www.openstreetmap.org/export/embed.html?bbox=${Math.min(...activeLocations.map(l => l.lng)) - 0.5}%2C${Math.min(...activeLocations.map(l => l.lat)) - 0.5}%2C${Math.max(...activeLocations.map(l => l.lng)) + 0.5}%2C${Math.max(...activeLocations.map(l => l.lat)) + 0.5}&layer=mapnik&marker=${activeLocations[0].lat}%2C${activeLocations[0].lng}`
-    : 'https://www.openstreetmap.org/export/embed.html?bbox=-107.5%2C34.5%2C-106.0%2C35.8&layer=mapnik'
 
   if (loading) {
     return (
@@ -114,29 +110,30 @@ export default function MapPage() {
 
       {/* Map + Locations */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Map */}
-        <div className="lg:col-span-2 bg-card border border-border rounded-xl overflow-hidden">
-          <div className="p-4 border-b border-border flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Navigation size={18} className="text-primary" />
-              <h3 className="font-semibold text-foreground">Territory Map</h3>
-            </div>
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Albuquerque, NM</span>
-          </div>
-          <div className="relative aspect-[16/10]">
-            <iframe
-              src={mapUrl}
-              className="w-full h-full border-0"
-              style={{ filter: 'grayscale(0) contrast(1) brightness(1)' }}
-              title="Territory Map"
-            />
-            <div className="absolute bottom-4 left-4 right-4 flex flex-wrap gap-2">
+        {/* Modern Map */}
+        <div className="lg:col-span-2">
+          <ModernMap
+            locations={locations}
+            selectedLocation={selected}
+            onLocationSelect={setSelected}
+            filterType={filterType}
+            filterStatus={filterStatus}
+          />
+          
+          {/* Quick Location Buttons */}
+          <div className="mt-4 bg-card border border-border rounded-xl p-4">
+            <div className="text-sm font-semibold text-foreground mb-3">Quick Access</div>
+            <div className="flex flex-wrap gap-2">
               {activeLocations.slice(0, 5).map(loc => (
                 <button
                   key={loc.id}
                   onClick={() => setSelected(loc)}
-                  className="bg-card/90 backdrop-blur-sm border border-border px-3 py-1.5 rounded-lg text-xs font-medium text-foreground hover:border-primary transition-colors"
+                  className="flex items-center gap-2 bg-background border border-border px-3 py-2 rounded-lg text-sm font-medium text-foreground hover:border-primary transition-colors"
                 >
+                  <div
+                    className="w-3 h-3 rounded-full border border-white shadow"
+                    style={{ backgroundColor: typeColors[loc.type] ? typeColors[loc.type].split(' ')[0] : '#6b7280' }}
+                  />
                   {loc.name}
                 </button>
               ))}

@@ -3,20 +3,23 @@ import { FlaskConical, Package, DollarSign, TrendingUp, AlertTriangle, Activity,
 import { api } from '../api'
 import type { Stats, Order, Evidence } from '../types'
 import PixelSprite from './PixelSprite'
+import { Card } from './ui/card'
 
 function StatCard({ icon: Icon, label, value, subtext, color }: { icon: any; label: string; value: string; subtext?: string; color: string }) {
   return (
-    <div className="bg-card border border-border rounded-xl p-5 hover:border-primary/30 transition-all duration-300 group">
-      <div className="flex items-start justify-between mb-4">
+    <Card className="hover:border-primary/30 transition-all duration-300 group">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <div className={`p-2.5 rounded-lg ${color} bg-opacity-10`}>
           <Icon size={20} className={color.replace('bg-', 'text-')} />
         </div>
         <Activity size={14} className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-      </div>
-      <div className="text-2xl font-bold text-foreground mb-1">{value}</div>
-      <div className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">{label}</div>
-      {subtext && <div className="text-[11px] text-muted-foreground mt-1.5">{subtext}</div>}
-    </div>
+      </CardHeader>
+      <CardContent>
+        <div className="text-2xl font-bold text-foreground mb-1">{value}</div>
+        <CardDescription className="text-xs uppercase tracking-wider font-semibold">{label}</CardDescription>
+        {subtext && <div className="text-[11px] text-muted-foreground mt-1.5">{subtext}</div>}
+      </CardContent>
+    </Card>
   )
 }
 

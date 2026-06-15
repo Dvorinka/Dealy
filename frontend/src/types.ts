@@ -154,6 +154,7 @@ export interface ShopOrder {
   status: string
   total_value: number
   customer: string
+  meetup_name?: string
   created_at: string
   items: {
     title: string
@@ -162,4 +163,13 @@ export interface ShopOrder {
     unit_price: number
     total_price: number
   }[]
+}
+
+export interface PlatformSettings {
+  shop_name: string
+  default_territory: string
+  order_code_prefix: string
+  require_dropoff: boolean
+  maintenance_mode: boolean
+  shop_welcome_message: string
 }

@@ -7,6 +7,8 @@ import EvidencePage from './components/EvidencePage'
 import OrdersPage from './components/OrdersPage'
 import CustomersPage from './components/CustomersPage'
 import MapPage from './components/MapPage'
+import AccountSettingsPage from './components/AccountSettingsPage'
+import PlatformSettingsPage from './components/PlatformSettingsPage'
 import ShopPage from './components/ShopPage'
 import type { User } from './types'
 
@@ -41,34 +43,25 @@ function App() {
   return (
     <Routes>
       <Route path="/" element={<ShopPage />} />
-      <Route path="/admin" element={
-        user ? (
-          <Layout user={user} onLogout={() => { localStorage.removeItem('token'); setUser(null) }}>
-            <Dashboard />
-          </Layout>
-        ) : (
-          <LoginPage onLogin={setUser} />
-        )
-      } />
       <Route
-        path="/admin/*"
+        path="/admin"
         element={
           user ? (
-            <Layout user={user} onLogout={() => { localStorage.removeItem('token'); setUser(null) }}>
-              <Routes>
-                <Route path="/admin" element={<Dashboard />} />
-                <Route path="/admin/evidence" element={<EvidencePage />} />
-                <Route path="/admin/orders" element={<OrdersPage />} />
-                <Route path="/admin/customers" element={<CustomersPage />} />
-                <Route path="/admin/map" element={<MapPage />} />
-                <Route path="*" element={<Navigate to="/admin" />} />
-              </Routes>
-            </Layout>
+            <Layout user={user} onLogout={() => { localStorage.removeItem('token'); setUser(null) }} />
           ) : (
             <LoginPage onLogin={setUser} />
           )
         }
-      />
+      >
+        <Route index element={<Dashboard />} />
+        <Route path="evidence" element={<EvidencePage />} />
+        <Route path="orders" element={<OrdersPage />} />
+        <Route path="customers" element={<CustomersPage />} />
+        <Route path="map" element={<MapPage />} />
+        <Route path="settings/account" element={<AccountSettingsPage user={user!} onUserUpdate={setUser} />} />
+        <Route path="settings/platform" element={<PlatformSettingsPage user={user!} />} />
+      </Route>
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
 }

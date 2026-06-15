@@ -1,4 +1,4 @@
-import type { Evidence, EvidenceType, Location, GangMember, Customer, Order, Payment, Stats, LoginResponse } from './types'
+import type { Evidence, EvidenceType, Location, GangMember, Customer, Order, Payment, Stats, LoginResponse, User, PlatformSettings, ShopOrder } from './types'
 
 const API_BASE = '/api'
 const SHOP_BASE = '/shop'
@@ -48,6 +48,13 @@ export const api = {
 
   me: () => fetchJSON<{ id: number; username: string; role: string; status: string }>('/me'),
 
+  updateMe: (data: { username?: string; current_password?: string; new_password?: string }) =>
+    fetchJSON<User>('/me', { method: 'PUT', body: JSON.stringify(data) }),
+
+  getPlatformSettings: () => fetchJSON<PlatformSettings>('/settings'),
+  updatePlatformSettings: (data: PlatformSettings) =>
+    fetchJSON<PlatformSettings>('/settings', { method: 'PUT', body: JSON.stringify(data) }),
+
   getNextOrderCode: () =>
     fetchJSON<{ order_code: string }>('/orders/next-code'),
 
@@ -94,7 +101,7 @@ export const api = {
   // Shop (public) endpoints
   shopListProducts: () => fetchShopJSON<any[]>('/products'),
   shopGetProduct: (id: number) => fetchShopJSON<any>(`/products/${id}`),
-  shopTrackOrder: (code: string) => fetchJSON<any>(`/orders/code/${code}`),
+  shopTrackOrder: (code: string) => fetchShopJSON<ShopOrder>(`/orders/track/${encodeURIComponent(code)}`),
   shopCreateOrder: (data: any) =>
     fetchShopJSON<any>('/orders', { method: 'POST', body: JSON.stringify(data) }),
   shopCreateCustomer: (data: any) =>

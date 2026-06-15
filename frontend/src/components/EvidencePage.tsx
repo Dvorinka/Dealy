@@ -4,6 +4,9 @@ import { api } from '../api'
 import type { Evidence, EvidenceType } from '../types'
 import PixelSprite from './PixelSprite'
 import { evidenceTypeSprites } from '../lib/pixelAssets'
+import { Card } from './ui/card'
+import { Input } from './ui/input'
+import { Select } from './ui/select'
 
 function StatusBadge({ status }: { status: string }) {
   const colors: Record<string, string> = {
@@ -66,32 +69,32 @@ export default function EvidencePage() {
       </div>
 
       {/* Filters */}
-      <div className="bg-card border border-border rounded-xl p-4 space-y-4">
+      <Card className="p-4 space-y-4">
         <div className="flex flex-col md:flex-row gap-3">
           <div className="relative flex-1">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <input
+            <Input
               type="text"
               placeholder="Search by code, title, or tag..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="w-full bg-background border border-input rounded-lg pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              className="w-full pl-10 pr-4 py-2.5 text-sm"
             />
           </div>
           <div className="flex gap-2">
-            <select
+            <Select
               value={filterType}
-              onChange={e => setFilterType(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilterType(e.target.value)}
               className="bg-background border border-input rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             >
               <option value="">All Types</option>
               {types.map(t => (
                 <option key={t.id} value={String(t.id)}>{t.name}</option>
               ))}
-            </select>
-            <select
+            </Select>
+            <Select
               value={filterStatus}
-              onChange={e => setFilterStatus(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilterStatus(e.target.value)}
               className="bg-background border border-input rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             >
               <option value="">All Status</option>
@@ -99,7 +102,7 @@ export default function EvidencePage() {
               <option value="in_transit">In Transit</option>
               <option value="disposed">Disposed</option>
               <option value="seized">Seized</option>
-            </select>
+            </Select>
             {(search || filterType || filterStatus) && (
               <button
                 onClick={() => { setSearch(''); setFilterType(''); setFilterStatus('') }}
@@ -110,7 +113,7 @@ export default function EvidencePage() {
             )}
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* Evidence Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">

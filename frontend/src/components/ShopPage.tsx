@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { Search, MapPin, ShoppingCart, ArrowLeft, Plus, Minus, Eye } from 'lucide-react'
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import { api } from '../api'
-import type { Evidence, EvidenceType, Location, Customer, Order, OrderItem } from '../types'
+import type { Evidence, EvidenceType, Location, Customer, ShopOrder } from '../types'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
 
@@ -58,15 +58,12 @@ export default function ShopPage() {
 
   const [cart, setCart] = useState<{ evidence: Evidence; qty: number }[]>([])
   const [customerName, setCustomerName] = useState('')
-  const [creatingNewCustomer, setCreatingNewCustomer] = useState(false)
-  const [newCustomerName, setNewCustomerName] = useState('')
-  const [newCustomerTerritory, setNewCustomerTerritory] = useState('')
-  const [orderCode, setOrderCode] = useState('')
+  const [meetupLocationId, setMeetupLocationId] = useState('')
   const [orderStatus, setOrderStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [orderResult, setOrderResult] = useState<string>('')
 
   const [trackCode, setTrackCode] = useState('')
-  const [trackResult, setTrackResult] = useState<Order | null>(null)
+  const [trackResult, setTrackResult] = useState<ShopOrder | null>(null)
   const [trackLoading, setTrackLoading] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<Evidence | null>(null)
 
@@ -119,49 +116,72 @@ export default function ShopPage() {
 
   const cartTotal = useMemo(() => cart.reduce((sum, c) => sum + c.evidence.street_value * c.qty, 0), [cart])
 
+  const trimmedCustomerName = customerName.trim()
+  const existingCustomer = useMemo(
+    () => customers.find(c => c.codename.toLowerCase() === trimmedCustomerName.toLowerCase()),
+    [customers, trimmedCustomerName]
+  )
+
+  const activeLocations = useMemo(
+    () => locations.filter(l => l.status === 'active'),
+    [locations]
+  )
+
   const handlePlaceOrder = async () => {
     if (cart.length === 0) return
+
+    if (!trimmedCustomerName) {
+      setOrderStatus('error')
+      setOrderResult('Please enter a customer name or codename.')
+      return
+    }
+
+    if (!meetupLocationId) {
+      setOrderStatus('error')
+      setOrderResult('Please select a drop-off location.')
+      return
+    }
+
     setOrderStatus('loading')
     try {
-      const customerId = customers.find(c => c.codename.toLowerCase() === customerName.toLowerCase().trim())?.id
-      const orderData: any = {
-        order_code: orderCode || `ORD-${Date.now().toString(36).toUpperCase()}`,
-        customer_id: customerId,
+      const orderPayload: {
+        customer_id?: number
+        new_customer?: { codename: string; real_name: string; territory: string }
+        meetup_location_id: number
+        notes: string
+        items: { evidence_id: number; quantity: number; unit_price: number }[]
+      } = {
+        meetup_location_id: Number(meetupLocationId),
         notes: 'Placed via shop',
         items: cart.map(c => ({
           evidence_id: c.evidence.id,
           quantity: c.qty,
           unit_price: c.evidence.street_value,
         })),
-        meetup_location_id: null,
       }
 
-      if (!customerId && creatingNewCustomer && newCustomerName.trim()) {
-        const newCust = await api.createCustomer({
-          codename: newCustomerName.trim(),
-          real_name: newCustomerName.trim(),
-          territory: newCustomerTerritory || 'Unknown',
-          trust_level: 3,
-          status: 'active',
-          total_spent: 0,
-        } as any)
-        orderData.customer_id = (newCust as any).id
+      if (existingCustomer) {
+        orderPayload.customer_id = existingCustomer.id
+      } else {
+        orderPayload.new_customer = {
+          codename: trimmedCustomerName,
+          real_name: trimmedCustomerName,
+          territory: 'Unknown',
+        }
       }
 
-      if (!orderData.customer_id) {
-        setOrderStatus('error')
-        setOrderResult('Please enter a customer name or create a new customer.')
-        return
-      }
-
-      const result = await api.createOrder(orderData as any)
-      const createdId = (result as any).id
-      const createdOrder = await api.getOrder(createdId)
-      setOrderResult(`Order ${createdOrder.order_code} placed successfully!`)
+      const result = await api.shopCreateOrder(orderPayload)
+      const orderCode = (result as { order_code: string }).order_code
+      setOrderResult(`Order ${orderCode} placed successfully!`)
       setOrderStatus('success')
       setCart([])
       setCustomerName('')
-      setOrderCode('')
+      setMeetupLocationId('')
+
+      if (!existingCustomer) {
+        const updatedCustomers = await api.listCustomers()
+        setCustomers(updatedCustomers)
+      }
     } catch (err: any) {
       setOrderStatus('error')
       setOrderResult(err.message || 'Failed to place order.')
@@ -173,9 +193,9 @@ export default function ShopPage() {
     setTrackLoading(true)
     setTrackResult(null)
     try {
-      const result = await api.getOrderByCode(trackCode.trim())
+      const result = await api.shopTrackOrder(trackCode.trim())
       setTrackResult(result)
-    } catch (err: any) {
+    } catch {
       setTrackResult(null)
     }
     setTrackLoading(false)
@@ -413,63 +433,25 @@ export default function ShopPage() {
                           onChange={e => setCustomerName(e.target.value)}
                           className="w-full bg-background border border-input rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                         />
-                        {customers.find(c => c.codename.toLowerCase() === customerName.toLowerCase().trim()) && (
-                          <div className="text-[10px] text-success mt-1">Existing customer found.</div>
+                        {trimmedCustomerName && (
+                          <div className={`text-[10px] mt-1 ${existingCustomer ? 'text-success' : 'text-accent'}`}>
+                            {existingCustomer ? 'Existing customer found.' : 'New customer will be created automatically.'}
+                          </div>
                         )}
                       </div>
 
-                      {!creatingNewCustomer ? (
-                        <button
-                          onClick={() => setCreatingNewCustomer(true)}
-                          className="w-full text-xs text-primary hover:text-primary/80 font-medium py-1"
-                        >
-                          + Create new customer
-                        </button>
-                      ) : (
-                        <div className="bg-muted/30 rounded-lg p-3 space-y-2">
-                          <input
-                            type="text"
-                            placeholder="New codename *"
-                            value={newCustomerName}
-                            onChange={e => setNewCustomerName(e.target.value)}
-                            className="w-full bg-background border border-input rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                          />
-                          <input
-                            type="text"
-                            placeholder="Territory"
-                            value={newCustomerTerritory}
-                            onChange={e => setNewCustomerTerritory(e.target.value)}
-                            className="w-full bg-background border border-input rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                          />
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => {
-                                setCustomerName(newCustomerName || 'Walk-in Customer')
-                                setCreatingNewCustomer(false)
-                              }}
-                              className="flex-1 bg-success hover:bg-success/90 text-white px-3 py-2 rounded-lg text-xs font-semibold transition-colors"
-                            >
-                              Use This Name
-                            </button>
-                            <button
-                              onClick={() => setCreatingNewCustomer(false)}
-                              className="px-3 py-2 border border-border rounded-lg text-xs hover:bg-muted transition-colors"
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        </div>
-                      )}
-
                       <div>
-                        <label className="block text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5">Order Reference (optional)</label>
-                        <input
-                          type="text"
-                          placeholder="Auto-generated"
-                          value={orderCode}
-                          onChange={e => setOrderCode(e.target.value)}
-                          className="w-full bg-background border border-input rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring"
-                        />
+                        <label className="block text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5">Drop-off Location *</label>
+                        <select
+                          value={meetupLocationId}
+                          onChange={e => setMeetupLocationId(e.target.value)}
+                          className="w-full bg-background border border-input rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                        >
+                          <option value="">Select drop-off location...</option>
+                          {activeLocations.map(l => (
+                            <option key={l.id} value={l.id}>{l.name} ({l.type.replace('_', ' ')})</option>
+                          ))}
+                        </select>
                       </div>
                     </div>
 
@@ -535,7 +517,7 @@ export default function ShopPage() {
                   <div className="grid grid-cols-2 gap-3 mb-4">
                     <div className="bg-card rounded-lg p-4">
                       <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Customer</div>
-                      <div className="text-sm font-bold text-foreground">{trackResult.customer_codename}</div>
+                      <div className="text-sm font-bold text-foreground">{trackResult.customer}</div>
                     </div>
                     <div className="bg-card rounded-lg p-4">
                       <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Total</div>
@@ -543,12 +525,22 @@ export default function ShopPage() {
                     </div>
                   </div>
 
+                  {trackResult.meetup_name && (
+                    <div className="bg-card rounded-lg p-4 mb-4">
+                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Drop-off Location</div>
+                      <div className="text-sm font-bold text-foreground flex items-center gap-1.5">
+                        <MapPin size={12} className="text-primary" />
+                        {trackResult.meetup_name}
+                      </div>
+                    </div>
+                  )}
+
                   <h4 className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-2">Items</h4>
                   <div className="space-y-2">
-                    {(trackResult.items || []).map((item: OrderItem, i: number) => (
+                    {trackResult.items.map((item, i) => (
                       <div key={i} className="flex items-center justify-between bg-card rounded-lg px-4 py-3">
                         <div>
-                          <div className="text-sm font-medium text-foreground">{item.evidence_title}</div>
+                          <div className="text-sm font-medium text-foreground">{item.title}</div>
                           <div className="text-xs text-muted-foreground font-mono">{item.evidence_code}</div>
                         </div>
                         <div className="text-right">
